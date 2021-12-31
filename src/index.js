@@ -3,10 +3,17 @@ const python = require("./py/python"); // parms(message, script) return promise
 const app = express();
 const port = 3000;
 
-app.get("/", (req, res) => {
-  const wallet = "0x16a1c8c6898b5301b578788183d89af11baf290c";
-  python(wallet, "test1.py").then((ans) => {
+
+app.get("/",(req,res)=>{
+  res.send("API OK")
+  console.log("route:`/` -> API OK")
+})
+
+app.get("/recommend", (req, res) => {
+  const address = req.query.address;  // recommend?address=123  ===> cosnt address = 123
+  python(address, "nn_recommender.py",).then((ans) => {
     res.send(ans);
+    console.log("route:`/recommend/:address` -> " + ans)
   });
 });
 
