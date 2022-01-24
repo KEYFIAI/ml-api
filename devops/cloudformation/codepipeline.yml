@@ -1,0 +1,447 @@
+Parameters:
+######## Codepipeline parameters ########
+  Provider:
+    Type: String
+    Default: GitHub
+  
+  TrainerRepo:
+    Type: String
+
+  TrainerBranch:
+    Type: String
+
+  APIRepo:
+    Type: String
+
+  APIBranch:
+    Type: String
+  
+  InfraRepo:
+    Type: String
+
+  InfraBranch:
+    Type: String
+
+  ProviderToken:
+    Type: String
+    NoEcho: true
+
+  Owner:
+    Type: String
+
+  AppName:
+    Type: String
+  
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - qa
+      - prod
+    Default: dev
+
+  InstanceName:
+    Type: String
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Codepipeline General Params
+      Parameters:
+        - Owner
+        - Provider
+        - ProviderToken
+        - AppName
+        - Stage
+
+    - Label:
+        default: Trainer Params
+      Parameters:
+        - TrainerRepo
+        - TrainerBranch
+
+    - Label:
+        default: API Params
+      Parameters:
+        - APIRepo
+        - APIBranch
+
+    - Label:
+        default: Infra Params
+      Parameters:
+        - InfraRepo
+        - InfraBranch
+        
+        
+Resources:        
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cfn-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": { "Service": [ "cloudformation.amazonaws.com" ]},
+              "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - ecs:*
+                  - ecr:*
+                  - iam:*
+                  - application-autoscaling:*
+                  - ec2:*
+                  - elasticloadbalancing:*
+                  - ssm:*
+                  - route53:*
+                  - cloudwatch:*
+                  - codedeploy:*
+                  - events:*
+                  - secretsmanager:*
+                  - autoscaling:*
+                  - rds:*
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - elasticfilesystem:*
+
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cp-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [ "codepipeline.amazonaws.com" ]},
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: arn:aws:s3:::*
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codedeploy:*
+                  - cloudformation:*
+                  - cloudwatch:*
+                  - events:*
+                  - iam:PassRole
+                  - secretsmanager:*
+                  - ec2:*
+                  - sns:*
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cb-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [ "codebuild.amazonaws.com" ]},
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - logs:*
+                  - ecr:*
+                  - cloudformation:*
+                  - ecs:*
+                  - ec2:*
+                  - s3:*
+                  - ecs:*
+                  - iam:*
+                  - sns:publish
+              - Resource: !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+                Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:GetObjectVersion'
+                
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cd-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [ "codedeploy.amazonaws.com" ]},
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: arn:aws:s3:::*
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codedeploy:*
+                  - cloudformation:*
+                  - cloudwatch:*
+                  - events:*
+                  - iam:PassRole
+                  - secretsmanager:*
+                  - ec2:*
+              
+        
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub ${AppName}-${Stage}-bucket
+
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Ref AWS::StackName
+      ServiceRole: !Ref CodeBuildServiceRole
+      Artifacts:
+        Location: !Ref ArtifactBucket
+        Type: "S3"
+      Source:
+        Location: !Sub ${ArtifactBucket}/source.zip
+        Type: "S3"
+        BuildSpec: |
+          version: 0.2
+          env:
+            exported-variables:
+              - GIT_COMMIT
+            git-credential-helper: yes
+
+          phases:
+                
+            build:
+              commands:
+                - cd  ./recommendation-engine
+                - pip install -r requirements.txt -t ./
+                - cd ..
+                - cd ml-api
+                - npm install
+                - cd devops
+                - chmod +x400 .\getenvs.sh
+                - .\getenvs.sh $STAGE    
+                
+              artifacts:
+                files:
+                  - recommender-engine/**/*
+                  - ml-api/**/*
+          
+      Environment:
+        ComputeType: "BUILD_GENERAL1_LARGE"
+        Image: "aws/codebuild/standard:5.0"
+        Type: "LINUX_CONTAINER"
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: STAGE
+            Value: !Ref Stage
+          - Name: APP_NAME
+            Value: !Ref AppName
+          - Name: API_REPO
+            Value: !Ref APIRepo
+          - Name: API_BRANCH
+            Value: !Ref APIBranch
+          - Name: TRAINER_REPO
+            Value: !Ref TrainerRepo
+          - Name: TRAINER_BRANCH
+            Value: !Ref TrainerBranch
+          - Name: INFRA_REPO
+            Value: !Ref InfraRepo
+          - Name: INFRA_BRANCH
+            Value: !Ref InfraBranch
+        
+  CodeDeployApp:
+    Type: AWS::CodeDeploy::Application
+    Properties: 
+      ApplicationName: !Sub ${AppName}-${Stage}-application
+      ComputePlatform: Server
+      
+  DeploymentGroup:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties: 
+      ApplicationName: !Ref CodeDeployApp
+      DeploymentGroupName: !Sub ${AppName}-${Stage}-deployment-group
+      Ec2TagFilters: 
+        - Key: Name
+          Value: !Ref InstanceName
+          Type: KEY_AND_VALUE
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+        
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${AppName}-${Stage}
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Trainer
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: '1'
+                Provider: !Ref Provider
+              Configuration:
+                Owner: !Ref Owner
+                Repo: !Ref TrainerRepo
+                Branch: !Ref TrainerBranch
+                OAuthToken: !Ref ProviderToken
+              OutputArtifacts:
+                - Name: Trainer
+              RunOrder: 1
+            - Name: API
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: '1'
+                Provider: !Ref Provider
+              Configuration:
+                Owner: !Ref Owner
+                Repo: !Ref APIRepo
+                Branch: !Ref APIBranch
+                OAuthToken: !Ref ProviderToken
+              OutputArtifacts:
+                - Name: API
+              RunOrder: 1
+
+            - Name: Infra
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: '1'
+                Provider: !Ref Provider
+              Configuration:
+                Owner: !Ref Owner
+                Repo: !Ref InfraRepo
+                Branch: !Ref InfraBranch
+                OAuthToken: !Ref ProviderToken
+              OutputArtifacts:
+                - Name: Infra
+              RunOrder: 1
+
+
+        # - Name: Deploy
+        #   Actions:
+        #     - Name: CreateS3BucketChangeSet
+        #       ActionTypeId:
+        #         Category: Deploy
+        #         Owner: AWS
+        #         Version: '1'
+        #         Provider: CloudFormation
+        #       Configuration:
+        #         ChangeSetName: Deploy
+        #         ActionMode: CHANGE_SET_REPLACE
+        #         StackName: s3-bucket
+        #         Capabilities: CAPABILITY_NAMED_IAM
+        #         TemplatePath: Infra::devops/services/s3-service.yml
+        #         RoleArn: !GetAtt CloudFormationExecutionRole.Arn
+
+        #       RunOrder: 1
+        #       InputArtifacts:
+        #         - Name: API
+
+
+        - Name: Build
+          Actions:
+            - Name: Build
+              Namespace: BuildVariables
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: '1'
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+                PrimarySource: App
+              InputArtifacts:
+                - Name: Trainer
+                - Name: API
+                - Name: Infra
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+        
+        - Name: CodeDeploy
+          Actions:
+            - Name: CreateApp
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref CodeDeployApp
+                DeploymentGroupName: !Ref DeploymentGroup
+              RunOrder: 2
+              InputArtifacts:
+                - Name: Infra
+                           
+Outputs:
+  PipelineUrl:
+    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${Pipeline}
+
+  CloudFormationExecutionRoleArn:
+    Value: !GetAtt CloudFormationExecutionRole.Arn
+    Export:
+      Name: !Sub '${AppName}CloudFormationExecutionRoleArn'  
+      
+  ArtifactBucket:
+    Value: !Sub ${AppName}-${Stage}
+    Export:
+      Name: !Sub '${AppName}ArtifactBucket'
+
+   
