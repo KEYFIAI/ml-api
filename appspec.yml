@@ -7,21 +7,21 @@ files:
     destination: /home/ec2-user/recommendation-engine
 hooks:
   BeforeInstall:
-    - location: /ml-api/devops/scripts/change_permissions.sh
+    - location: ./ml-api/devops/scripts/change_permissions.sh
       timeout: 300
       runas: root
-    - location: /ml-api/devops/scripts/getenvs.sh dev
+    - location: ./ml-api/devops/scripts/getenvs.sh dev
       timeout: 300
       runas: root
-    - location: /ml-api/devops/scripts/trainer.sh
+    - location: ./ml-api/devops/scripts/trainer.sh
       timeout: 300
       runas: root
   
   ApplicationStart:
-    - location: /ml-api/devops/scripts/start_server.sh
+    - location: ./ml-api/devops/scripts/start_server.sh
       timeout: 300
       runas: root
   ApplicationStop:
-    - location: /ml-api/devops/scripts/stop_server.sh
+    - location: ./ml-api/devops/scripts/stop_server.sh
       timeout: 300
       runas: root
