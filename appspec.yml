@@ -4,8 +4,12 @@ files:
   - source: /ml-api
     destination: /home/ec2-user/
   - source: /recommendation-engine
-    destination: /home/ec2-user/
+    destination: /home/ec2-user/ml-api/src/py
 hooks:
+  BeforeInstall:
+    - location: /devops/scripts/before_install.sh
+      timeout: 300
+      runas: root
   AfterInstall:
     - location: /devops/scripts/change_permissions.sh
       timeout: 300

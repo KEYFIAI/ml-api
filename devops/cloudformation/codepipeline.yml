@@ -372,7 +372,7 @@ Resources:
                 DeploymentGroupName: !Ref DeploymentGroup
               RunOrder: 2
               InputArtifacts:
-                - Name: API
+                - Name: BuildOutput
                            
 Outputs:
   PipelineUrl:
