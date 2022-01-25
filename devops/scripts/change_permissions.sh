@@ -1,5 +1,5 @@
 #!/bin/bash
-chmod +x400 ./getenvs.sh
-chmod +x400 ./trainer.sh
-chmod +x400 ./stop_server.sh
-chmod +x400 ./start.sh
+chmod +x ./getenvs.sh
+chmod +x ./trainer.sh
+chmod +x ./stop_server.sh
+chmod +x ./start.sh
