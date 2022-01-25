@@ -16,12 +16,7 @@ Parameters:
   APIBranch:
     Type: String
   
-  InfraRepo:
-    Type: String
-
-  InfraBranch:
-    Type: String
-
+  
   ProviderToken:
     Type: String
     NoEcho: true
@@ -68,13 +63,7 @@ Metadata:
       Parameters:
         - APIRepo
         - APIBranch
-
-    - Label:
-        default: Infra Params
-      Parameters:
-        - InfraRepo
-        - InfraBranch
-        
+     
         
 Resources:        
   CloudFormationExecutionRole:
@@ -266,8 +255,8 @@ Resources:
                 - cd ..
                 - cd ml-api
                 - npm install
-                - cd devops
-                - chmod +x400 .\getenvs.sh
+                - cd devops\script
+                - chmod +x400 .\change_permissions.sh
                 - .\getenvs.sh $STAGE    
                 
               artifacts:
@@ -295,11 +284,7 @@ Resources:
             Value: !Ref TrainerRepo
           - Name: TRAINER_BRANCH
             Value: !Ref TrainerBranch
-          - Name: INFRA_REPO
-            Value: !Ref InfraRepo
-          - Name: INFRA_BRANCH
-            Value: !Ref InfraBranch
-        
+          
   CodeDeployApp:
     Type: AWS::CodeDeploy::Application
     Properties: 
@@ -358,44 +343,8 @@ Resources:
                 - Name: API
               RunOrder: 1
 
-            - Name: Infra
-              ActionTypeId:
-                Category: Source
-                Owner: ThirdParty
-                Version: '1'
-                Provider: !Ref Provider
-              Configuration:
-                Owner: !Ref Owner
-                Repo: !Ref InfraRepo
-                Branch: !Ref InfraBranch
-                OAuthToken: !Ref ProviderToken
-              OutputArtifacts:
-                - Name: Infra
-              RunOrder: 1
-
-
-        # - Name: Deploy
-        #   Actions:
-        #     - Name: CreateS3BucketChangeSet
-        #       ActionTypeId:
-        #         Category: Deploy
-        #         Owner: AWS
-        #         Version: '1'
-        #         Provider: CloudFormation
-        #       Configuration:
-        #         ChangeSetName: Deploy
-        #         ActionMode: CHANGE_SET_REPLACE
-        #         StackName: s3-bucket
-        #         Capabilities: CAPABILITY_NAMED_IAM
-        #         TemplatePath: Infra::devops/services/s3-service.yml
-        #         RoleArn: !GetAtt CloudFormationExecutionRole.Arn
-
-        #       RunOrder: 1
-        #       InputArtifacts:
-        #         - Name: API
-
-
-        - Name: Build
+            
+        - Name: Build and deploy
           Actions:
             - Name: Build
               Namespace: BuildVariables
@@ -410,7 +359,6 @@ Resources:
               InputArtifacts:
                 - Name: Trainer
                 - Name: API
-                - Name: Infra
               OutputArtifacts:
                 - Name: BuildOutput
               RunOrder: 1
@@ -428,7 +376,7 @@ Resources:
                 DeploymentGroupName: !Ref DeploymentGroup
               RunOrder: 2
               InputArtifacts:
-                - Name: Infra
+                - Name: API
                            
 Outputs:
   PipelineUrl:
