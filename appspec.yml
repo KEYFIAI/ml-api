@@ -2,11 +2,11 @@ version: 0.0
 os: linux
 files:
   - source: /ml-api
-    destination: /home/ec2-user/ml-api
+    destination: /home/ec2-user/
   - source: /recommendation-engine
-    destination: /home/ec2-user/recommendation-engine
+    destination: /home/ec2-user/
 hooks:
-  BeforeInstall:
+  AfterInstall:
     - location: /devops/scripts/change_permissions.sh
       timeout: 300
       runas: root
