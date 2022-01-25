@@ -251,7 +251,7 @@ Resources:
             build:
               commands:
                 - npm install
-                - chmod +x ./devops/scriptchange_permissions.sh
+                - chmod +x ./devops/scripts/change_permissions.sh
                 - cd .././01
                 - pip install -r requirements.txt -t ./
                                 

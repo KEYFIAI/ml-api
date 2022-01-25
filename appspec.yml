@@ -6,7 +6,7 @@ files:
   - source: /recommendation-engine
     destination: /home/ec2-user/recommendation-engine
 hooks:
-  AfterInstall:
+  BeforeInstall:
     - location: /ml-api/devops/scripts/change_permissions.sh
       timeout: 300
       runas: root
@@ -16,6 +16,7 @@ hooks:
     - location: /ml-api/devops/scripts/trainer.sh
       timeout: 300
       runas: root
+  
   ApplicationStart:
     - location: /ml-api/devops/scripts/start_server.sh
       timeout: 300
