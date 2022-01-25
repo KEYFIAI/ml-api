@@ -4,10 +4,13 @@ files:
   - source: /ml-api
     destination: /home/ec2-user/ml-api
   - source: /recommendation-engine
-    destination: /home/ec2-user/ml-api/py/recommendation-engine
+    destination: /home/ec2-user/recommendation-engine
 hooks:
   AfterInstall:
     - location: /ml-api/devops/scripts/change_permissions.sh
+      timeout: 300
+      runas: root
+    - location: /ml-api/devops/scripts/getenvs.sh dev
       timeout: 300
       runas: root
     - location: /ml-api/devops/scripts/trainer.sh

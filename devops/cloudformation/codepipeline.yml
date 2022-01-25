@@ -250,15 +250,12 @@ Resources:
                 
             build:
               commands:
-                - cd  ./recommendation-engine
-                - pip install -r requirements.txt -t ./
-                - cd ..
-                - cd ml-api
                 - npm install
                 - cd devops\script
                 - chmod +x400 .\change_permissions.sh
-                - .\getenvs.sh $STAGE    
-                
+                - cd .././01
+                - pip install -r requirements.txt -t ./
+                                
               artifacts:
                 files:
                   - recommender-engine/**/*
@@ -344,7 +341,7 @@ Resources:
               RunOrder: 1
 
             
-        - Name: Build and deploy
+        - Name: Build-and-Deploy
           Actions:
             - Name: Build
               Namespace: BuildVariables
@@ -355,7 +352,7 @@ Resources:
                 Provider: CodeBuild
               Configuration:
                 ProjectName: !Ref CodeBuildProject
-                PrimarySource: App
+                PrimarySource: API
               InputArtifacts:
                 - Name: Trainer
                 - Name: API
