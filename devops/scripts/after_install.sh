@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+sudo chown -R ec2-user /home/ec2-user/ml-api
 cd /home/ec2-user/ml-api
 #check if the npm is installed
 if ! [ -x "$(command -v npm)" ]; then
