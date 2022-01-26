@@ -9,6 +9,9 @@ hooks:
       timeout: 300
       runas: root
   AfterInstall:
+    - location: /devops/scripts/change_permissions.sh
+      timeout: 300
+      runas: root
     - location: /devops/scripts/after_install.sh
       timeout: 300
       runas: ec2-user
