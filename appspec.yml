@@ -11,16 +11,9 @@ hooks:
       timeout: 300
       runas: root
   AfterInstall:
-    - location: /devops/scripts/change_permissions.sh
+    - location: /devops/scripts/after_install.sh dev
       timeout: 300
       runas: root
-    - location: /devops/scripts/getenvs.sh dev
-      timeout: 300
-      runas: root
-    - location: /devops/scripts/trainer.sh
-      timeout: 1800
-      runas: root
-  
   ApplicationStart:
     - location: /devops/scripts/start_server.sh
       timeout: 300
