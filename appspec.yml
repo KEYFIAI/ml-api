@@ -1,8 +1,8 @@
 version: 0.0
 os: linux
 files:
-  - source: /ml-api
-    destination: /home/ec2-user
+  - source: /
+    destination: /home/ec2-user/ml-api/
 hooks:
   BeforeInstall:
     - location: /devops/scripts/before_install.sh
