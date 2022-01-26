@@ -2,16 +2,14 @@ version: 0.0
 os: linux
 files:
   - source: /ml-api
-    destination: /home/ec2-user/
-  - source: /recommendation-engine
-    destination: /home/ec2-user/ml-api/src/py
+    destination: /home/ec2-user/ml-api
 hooks:
   BeforeInstall:
     - location: /devops/scripts/before_install.sh
       timeout: 300
       runas: root
   AfterInstall:
-    - location: /devops/scripts/after_install.sh dev
+    - location: /devops/scripts/after_install.sh
       timeout: 300
       runas: root
   ApplicationStart:
