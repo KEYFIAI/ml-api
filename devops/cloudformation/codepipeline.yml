@@ -16,7 +16,6 @@ Parameters:
   APIBranch:
     Type: String
   
-  
   ProviderToken:
     Type: String
     NoEcho: true
@@ -219,6 +218,7 @@ Resources:
                   - iam:PassRole
                   - secretsmanager:*
                   - ec2:*
+                  - s3:*
               
         
 
@@ -227,77 +227,39 @@ Resources:
     Properties: 
       BucketName: !Sub ${AppName}-${Stage}-bucket
 
-
-  CodeBuildProject:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Name: !Ref AWS::StackName
-      ServiceRole: !Ref CodeBuildServiceRole
-      Artifacts:
-        Location: !Ref ArtifactBucket
-        Type: "S3"
-      Source:
-        Location: !Sub ${ArtifactBucket}/source.zip
-        Type: "S3"
-        BuildSpec: |
-          version: 0.2
-          env:
-            exported-variables:
-              - GIT_COMMIT
-            git-credential-helper: yes
-
-          phases:
-                
-            build:
-              commands:
-                - npm install
-                - chmod +x ./devops/scripts/change_permissions.sh
-                - cd .././01
-                - pip install -r requirements.txt -t ./
-                                
-              artifacts:
-                files:
-                  - recommender-engine/**/*
-                  - ml-api/**/*
-          
-      Environment:
-        ComputeType: "BUILD_GENERAL1_LARGE"
-        Image: "aws/codebuild/standard:5.0"
-        Type: "LINUX_CONTAINER"
-        PrivilegedMode: true
-        EnvironmentVariables:
-          - Name: AWS_DEFAULT_REGION
-            Value: !Ref AWS::Region
-          - Name: STAGE
-            Value: !Ref Stage
-          - Name: APP_NAME
-            Value: !Ref AppName
-          - Name: API_REPO
-            Value: !Ref APIRepo
-          - Name: API_BRANCH
-            Value: !Ref APIBranch
-          - Name: TRAINER_REPO
-            Value: !Ref TrainerRepo
-          - Name: TRAINER_BRANCH
-            Value: !Ref TrainerBranch
-          
-  CodeDeployApp:
+  CodeDeployApi:
     Type: AWS::CodeDeploy::Application
     Properties: 
-      ApplicationName: !Sub ${AppName}-${Stage}-application
+      ApplicationName: !Sub ${AppName}-${Stage}-application-API
       ComputePlatform: Server
-      
-  DeploymentGroup:
+    
+  CodeDeployTrainer:
+    Type: AWS::CodeDeploy::Application
+    Properties: 
+      ApplicationName: !Sub ${AppName}-${Stage}-application-Trainer
+      ComputePlatform: Server
+        
+  DeploymentGroupApi:
     Type: AWS::CodeDeploy::DeploymentGroup
     Properties: 
-      ApplicationName: !Ref CodeDeployApp
-      DeploymentGroupName: !Sub ${AppName}-${Stage}-deployment-group
+      ApplicationName: !Ref CodeDeployApi
+      DeploymentGroupName: !Sub ${AppName}-${Stage}-deployment-group-api
       Ec2TagFilters: 
         - Key: Name
           Value: !Ref InstanceName
           Type: KEY_AND_VALUE
       ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
         
+  DeploymentGroupTrainer:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties: 
+      ApplicationName: !Ref CodeDeployTrainer
+      DeploymentGroupName: !Sub ${AppName}-${Stage}-deployment-group-trainer
+      Ec2TagFilters: 
+        - Key: Name
+          Value: !Ref InstanceName
+          Type: KEY_AND_VALUE
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
 
   Pipeline:
     Type: AWS::CodePipeline::Pipeline
@@ -339,40 +301,33 @@ Resources:
                 - Name: API
               RunOrder: 1
 
-            
-        - Name: Build-and-Deploy
-          Actions:
-            - Name: Build
-              Namespace: BuildVariables
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: '1'
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref CodeBuildProject
-                PrimarySource: API
-              InputArtifacts:
-                - Name: Trainer
-                - Name: API
-              OutputArtifacts:
-                - Name: BuildOutput
-              RunOrder: 1
-        
         - Name: CodeDeploy
           Actions:
-            - Name: CreateApp
+            - Name: CodeDeployTrainer
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
                 Version: '1'
                 Provider: CodeDeploy
               Configuration:
-                ApplicationName: !Ref CodeDeployApp
-                DeploymentGroupName: !Ref DeploymentGroup
-              RunOrder: 2
+                ApplicationName: !Ref CodeDeployTrainer
+                DeploymentGroupName: !Ref DeploymentGroupTrainer
+              RunOrder: 1
               InputArtifacts:
-                - Name: BuildOutput
+                - Name: Trainer
+
+            - Name: CodeDeployAPI
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref CodeDeployApi
+                DeploymentGroupName: !Ref DeploymentGroupApi
+              RunOrder: 1
+              InputArtifacts:
+                - Name: API
                            
 Outputs:
   PipelineUrl:
@@ -387,5 +342,3 @@ Outputs:
     Value: !Sub ${AppName}-${Stage}
     Export:
       Name: !Sub '${AppName}ArtifactBucket'
-
-   
