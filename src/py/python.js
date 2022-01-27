@@ -5,7 +5,7 @@ function python(message, script) {
     const options = {
       mode: "text",
       pythonPath: "python3", // LINUX or MAX - python3 | Window - python
-      scriptPath: "./src/py/recommendation-engine",
+      scriptPath: "../recommendation-engine",
       args: [message],
     };
 

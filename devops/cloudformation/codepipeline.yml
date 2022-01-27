@@ -1,0 +1,344 @@
+Parameters:
+######## Codepipeline parameters ########
+  Provider:
+    Type: String
+    Default: GitHub
+  
+  TrainerRepo:
+    Type: String
+
+  TrainerBranch:
+    Type: String
+
+  APIRepo:
+    Type: String
+
+  APIBranch:
+    Type: String
+  
+  ProviderToken:
+    Type: String
+    NoEcho: true
+
+  Owner:
+    Type: String
+
+  AppName:
+    Type: String
+  
+  Stage:
+    Type: String
+    AllowedValues:
+      - dev
+      - staging
+      - qa
+      - prod
+    Default: dev
+
+  InstanceName:
+    Type: String
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    - Label:
+        default: Codepipeline General Params
+      Parameters:
+        - Owner
+        - Provider
+        - ProviderToken
+        - AppName
+        - Stage
+
+    - Label:
+        default: Trainer Params
+      Parameters:
+        - TrainerRepo
+        - TrainerBranch
+
+    - Label:
+        default: API Params
+      Parameters:
+        - APIRepo
+        - APIBranch
+     
+        
+Resources:        
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cfn-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+              "Effect": "Allow",
+              "Principal": { "Service": [ "cloudformation.amazonaws.com" ]},
+              "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - ecs:*
+                  - ecr:*
+                  - iam:*
+                  - application-autoscaling:*
+                  - ec2:*
+                  - elasticloadbalancing:*
+                  - ssm:*
+                  - route53:*
+                  - cloudwatch:*
+                  - codedeploy:*
+                  - events:*
+                  - secretsmanager:*
+                  - autoscaling:*
+                  - rds:*
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - elasticfilesystem:*
+
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cp-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [ "codepipeline.amazonaws.com" ]},
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: arn:aws:s3:::*
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codedeploy:*
+                  - cloudformation:*
+                  - cloudwatch:*
+                  - events:*
+                  - iam:PassRole
+                  - secretsmanager:*
+                  - ec2:*
+                  - sns:*
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cb-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [ "codebuild.amazonaws.com" ]},
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - logs:*
+                  - ecr:*
+                  - cloudformation:*
+                  - ecs:*
+                  - ec2:*
+                  - s3:*
+                  - ecs:*
+                  - iam:*
+                  - sns:publish
+              - Resource: !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+                Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:GetObjectVersion'
+                
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub cd-${AWS::StackName}
+      Path: /
+      AssumeRolePolicyDocument: |
+        {
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": [ "codedeploy.amazonaws.com" ]},
+            "Action": [ "sts:AssumeRole" ]
+          }]
+        }
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: arn:aws:s3:::*
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                  - codedeploy:*
+                  - cloudformation:*
+                  - cloudwatch:*
+                  - events:*
+                  - iam:PassRole
+                  - secretsmanager:*
+                  - ec2:*
+                  - s3:*
+              
+        
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub ${AppName}-${Stage}-bucket
+
+  CodeDeployApi:
+    Type: AWS::CodeDeploy::Application
+    Properties: 
+      ApplicationName: !Sub ${AppName}-${Stage}-application-API
+      ComputePlatform: Server
+    
+  CodeDeployTrainer:
+    Type: AWS::CodeDeploy::Application
+    Properties: 
+      ApplicationName: !Sub ${AppName}-${Stage}-application-Trainer
+      ComputePlatform: Server
+        
+  DeploymentGroupApi:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties: 
+      ApplicationName: !Ref CodeDeployApi
+      DeploymentGroupName: !Sub ${AppName}-${Stage}-deployment-group-api
+      Ec2TagFilters: 
+        - Key: Name
+          Value: !Ref InstanceName
+          Type: KEY_AND_VALUE
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+        
+  DeploymentGroupTrainer:
+    Type: AWS::CodeDeploy::DeploymentGroup
+    Properties: 
+      ApplicationName: !Ref CodeDeployTrainer
+      DeploymentGroupName: !Sub ${AppName}-${Stage}-deployment-group-trainer
+      Ec2TagFilters: 
+        - Key: Name
+          Value: !Ref InstanceName
+          Type: KEY_AND_VALUE
+      ServiceRoleArn: !GetAtt CodeDeployServiceRole.Arn
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${AppName}-${Stage}
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Trainer
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: '1'
+                Provider: !Ref Provider
+              Configuration:
+                Owner: !Ref Owner
+                Repo: !Ref TrainerRepo
+                Branch: !Ref TrainerBranch
+                OAuthToken: !Ref ProviderToken
+              OutputArtifacts:
+                - Name: Trainer
+              RunOrder: 1
+            - Name: API
+              ActionTypeId:
+                Category: Source
+                Owner: ThirdParty
+                Version: '1'
+                Provider: !Ref Provider
+              Configuration:
+                Owner: !Ref Owner
+                Repo: !Ref APIRepo
+                Branch: !Ref APIBranch
+                OAuthToken: !Ref ProviderToken
+              OutputArtifacts:
+                - Name: API
+              RunOrder: 1
+
+        - Name: CodeDeploy
+          Actions:
+            - Name: CodeDeployTrainer
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref CodeDeployTrainer
+                DeploymentGroupName: !Ref DeploymentGroupTrainer
+              RunOrder: 1
+              InputArtifacts:
+                - Name: Trainer
+
+            - Name: CodeDeployAPI
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: '1'
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref CodeDeployApi
+                DeploymentGroupName: !Ref DeploymentGroupApi
+              RunOrder: 1
+              InputArtifacts:
+                - Name: API
+                           
+Outputs:
+  PipelineUrl:
+    Value: !Sub https://console.aws.amazon.com/codepipeline/home?region=${AWS::Region}#/view/${Pipeline}
+
+  CloudFormationExecutionRoleArn:
+    Value: !GetAtt CloudFormationExecutionRole.Arn
+    Export:
+      Name: !Sub '${AppName}CloudFormationExecutionRoleArn'  
+      
+  ArtifactBucket:
+    Value: !Sub ${AppName}-${Stage}
+    Export:
+      Name: !Sub '${AppName}ArtifactBucket'
