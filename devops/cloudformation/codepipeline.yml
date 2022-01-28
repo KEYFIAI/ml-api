@@ -325,7 +325,7 @@ Resources:
               Configuration:
                 ApplicationName: !Ref CodeDeployApi
                 DeploymentGroupName: !Ref DeploymentGroupApi
-              RunOrder: 1
+              RunOrder: 2
               InputArtifacts:
                 - Name: API
                            
