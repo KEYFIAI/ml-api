@@ -7,4 +7,4 @@ if ! [ -x "$(command -v npm)" ]; then
   PATH="/home/ec2-user/.nvm/versions/node/v17.4.0/bin:$PATH"
 fi	
 
-/home/ec2-user/.nvm/versions/node/v17.4.0/bin/nodemon src/index.js
+/home/ec2-user/.nvm/versions/node/v17.4.0/bin/nodemon src/index.js &

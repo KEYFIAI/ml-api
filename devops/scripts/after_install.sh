@@ -20,6 +20,7 @@ cp -r ../recommendation-engine/tokens.json src/py/recommendation-engine
 cp -r ../recommendation-engine/memories src/py/recommendation-engine
 cp -r ../recommendation-engine/deployment-data src/py/recommendation-engine
 cp -r ../recommendation-engine/file_path.py src/py/recommendation-engine
+cp -r ../recommendation-engine/nn_recommender.py src/py/recommendation-engine
 cp -r ../recommendation-engine/.env ./
 
  
