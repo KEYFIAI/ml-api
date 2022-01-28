@@ -9,5 +9,3 @@ if ! [ -x "$(command -v npm)" ]; then
 fi	
 
 /home/ec2-user/.nvm/versions/node/v17.4.0/bin/npm install
- 
- 
