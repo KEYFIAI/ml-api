@@ -1,7 +1,11 @@
 const express = require("express");
+const cors = require("cors");
 const python = require("./py/python"); // parms(message, script) return promise
 const app = express();
 const port = 3000;
+
+app.use(cors());
+app.options("*", cors());
 
 app.get("/", (req, res) => {
   res.send("API OK");
