@@ -1,19 +1,23 @@
 const express = require("express");
+const cors = require("cors");
 const python = require("./py/python"); // parms(message, script) return promise
 const app = express();
 const port = 3000;
 
+app.use(cors());
+app.options("*", cors());
 
-app.get("/",(req,res)=>{
-  res.send("API OK")
-  console.log("route:`/` -> API OK")
-})
+app.get("/", (req, res) => {
+  res.send("API OK");
+  console.log("route:`/` -> API OK");
+});
 
 app.get("/recommend", (req, res) => {
-  const address = req.query.address;  // recommend?address=123  ===> cosnt address = 123
-  python(address, "nn_recommender.py",).then((ans) => {
-    res.send(ans);
-    console.log("route:`/recommend/:address` -> " + ans)
+  const address = req.query.address; // recommend?address=123  ===> cosnt address = 123
+  console.log("route:`/recommend/:address` -> Processing ->", address);
+  python(address, "nn_recommender.py").then((ans) => {
+    res.send(ans[0]);
+    console.log("route:`/recommend/:address` -> " + ans[0]);
   });
 });
 
