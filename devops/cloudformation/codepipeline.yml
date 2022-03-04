@@ -37,6 +37,7 @@ Parameters:
 
   InstanceName:
     Type: String
+    Description: Enter a instance name
 
 
 Metadata:
@@ -225,7 +226,7 @@ Resources:
   ArtifactBucket:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub ${AppName}-${Stage}-bucket
+      BucketName: !Sub ${AppName}-${Stage}-api-bucket
 
   CodeDeployApi:
     Type: AWS::CodeDeploy::Application
